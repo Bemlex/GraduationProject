@@ -21,158 +21,188 @@ namespace GraduationProject.Ordinary
     /// </summary>
     public partial class Cars : Window
     {
-        Npgsql.NpgsqlConnection con = new NpgsqlConnection("Server = localhost; Port = 5432; Username = postgres; Password = 1234; Database = GIBDD");
-        Npgsql.NpgsqlCommand cmd = new NpgsqlCommand();
+        private const string ConnectionString = "Server = localhost; Port = 5432; Username = postgres; Password = 1234; Database = GIBDD";
+        private int loadDataRequest = 0;
+        private bool isClearingPeriod = false;
         string tb_search_standart_text = "🔍 Поиск";
         public Cars()
         {
             InitializeComponent();
-            try
-            {
-                cmd.Connection = con;
-            }
-            catch (Npgsql.NpgsqlException ex)
-            {
-                MessageBox.Show("Ошибка подключения PostgreSQL" + ex);
-            }
             LoadData();
         }
         private async void LoadData()
         {
+            int requestId = ++loadDataRequest;
             List<CarsView> List_cars = new List<CarsView>();
             try
             {
-                await con.OpenAsync();
-                string sql = @"SELECT m.mark, mm.model, c.color, s.number, c.release, c.vin, c.engine, p.last_name,
-                                p.first_name, p.middle_name, i.name FROM Cars c
-								JOIN Mark_models mm ON c.mark_model_id = mm.id
-								JOIN Marks m ON mm.mark_id = m.id
-								JOIN State_numbers s ON c.state_number_id = s.id
-                                JOIN People p ON c.owner_id = p.id
-                                JOIN Insurances i ON c.insurance_id = i.id";
-                string[] search_parts = Search.Search_text.Split(
-                    new[] { ' ' });
-                if (Search.Search_text != tb_search_standart_text && !string.IsNullOrWhiteSpace(Search.Search_text))
+                string sql = @"
+SELECT
+    vr.id AS registration_id,
+    vr.car_id,
+    m.mark AS car_mark,
+    mm.model AS car_model,
+    c.color AS car_color,
+    vr.state_number_id,
+    sn.number AS state_number,
+    sn.region AS state_region,
+    c.engine,
+    c.release,
+    c.vin,
+    i.name AS insurance_name,
+    owner.last_name AS owner_last_name,
+    owner.first_name AS owner_first_name,
+    owner.middle_name AS owner_middle_name,
+    vr.date_reg,
+    vr.date_end,
+    vr.employee_token,
+    employee_person.last_name AS employee_last_name,
+    employee_person.first_name AS employee_first_name,
+    employee_person.middle_name AS employee_middle_name
+FROM Vehicle_registrations vr
+LEFT JOIN People owner ON vr.people_id = owner.id
+LEFT JOIN Cars c ON vr.car_id = c.id
+LEFT JOIN Mark_models mm ON c.mark_model_id = mm.id
+LEFT JOIN Marks m ON mm.mark_id = m.id
+LEFT JOIN State_numbers sn ON vr.state_number_id = sn.id
+LEFT JOIN Employees e ON vr.employee_token = e.token
+LEFT JOIN People employee_person ON e.people_id = employee_person.id
+LEFT JOIN Insurances i ON c.insurance_id = i.id";
+
+                string searchText = Search.Search_text?.Trim();
+                string[] search_parts = string.IsNullOrWhiteSpace(searchText) ? new string[0] : searchText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                bool hasSearch = searchText != tb_search_standart_text && search_parts.Length > 0;
+                DateTime? dateFrom = dp_date_from.SelectedDate?.Date;
+                DateTime? dateTo = dp_date_to.SelectedDate?.Date;
+
+                if (dateFrom.HasValue && dateTo.HasValue && dateFrom.Value > dateTo.Value)
                 {
-                    if (search_parts.Length == 1)
-                    {
-                        sql += @" WHERE 
-            m.mark ILIKE @p0 OR
-            mm.model ILIKE @p0 OR
-            c.vin ILIKE @p0 OR
-            c.color::text ILIKE @p0 OR
-            s.number ILIKE @p0 OR
-            p.last_name ILIKE @p0 OR
-            p.first_name ILIKE @p0 OR
-            p.middle_name ILIKE @p0 OR
-            i.name ILIKE @p0";
-                    }
+                    MessageBox.Show("Дата начала не может быть позже даты конца");
+                    return;
+                }
 
-                    if (search_parts.Length == 2)
-                    {
-                        sql += @" WHERE
-            (p.last_name ILIKE @p0 AND p.first_name ILIKE @p1)
-            OR (p.first_name ILIKE @p0 AND p.last_name ILIKE @p1)
-            OR (m.mark ILIKE @p0 AND mm.model ILIKE @p1)";
-                    }
+                List<string> whereParts = new List<string>();
 
-                    if (search_parts.Length == 3)
+                if (hasSearch)
+                {
+                    if (dateFrom.HasValue && dateTo.HasValue)
                     {
-                        sql += @" WHERE
-            (p.last_name ILIKE @p0 AND p.first_name ILIKE @p1 AND p.middle_name ILIKE @p2)
-            OR (p.first_name ILIKE @p0 AND p.last_name ILIKE @p1 AND p.middle_name ILIKE @p2)";
+                        whereParts.Add("(vr.date_reg <= @dateTo AND COALESCE(vr.date_end, CURRENT_DATE) >= @dateFrom)");
+                    }
+                    else if (dateFrom.HasValue)
+                    {
+                        whereParts.Add("COALESCE(vr.date_end, CURRENT_DATE) >= @dateFrom");
+                    }
+                    else if (dateTo.HasValue)
+                    {
+                        whereParts.Add("vr.date_reg <= @dateTo");
                     }
                 }
-            
+
+                    if (dateFrom.HasValue && dateTo.HasValue)
+                    whereParts.Add("(vr.date_reg <= @dateTo AND (vr.date_end IS NULL OR vr.date_end >= @dateFrom))");
+                else if (dateFrom.HasValue)
+                    whereParts.Add("(vr.date_end IS NULL OR vr.date_end >= @dateFrom)");
+                else if (dateTo.HasValue)
+                    whereParts.Add("(vr.date_reg <= @dateTo)");
+
+                if (whereParts.Count > 0)
+                    sql += " WHERE " + string.Join(" AND ", whereParts);
+
+                sql += " ORDER BY vr.id DESC";
+
+                using (var con = new NpgsqlConnection(ConnectionString))
                 using (var cmd = new NpgsqlCommand(sql, con))
                 {
-                    if (Search.Search_text != tb_search_standart_text && !string.IsNullOrWhiteSpace(Search.Search_text) && search_parts.Length == 1)
+                    if (hasSearch)
                     {
                         cmd.Parameters.AddWithValue("p0", $"%{search_parts[0]}%");
+                        if (search_parts.Length >= 2)
+                            cmd.Parameters.AddWithValue("p1", $"%{search_parts[1]}%");
+                        if (search_parts.Length >= 3)
+                            cmd.Parameters.AddWithValue("p2", $"%{search_parts[2]}%");
                     }
-                    if (Search.Search_text != tb_search_standart_text && !string.IsNullOrWhiteSpace(Search.Search_text) && search_parts.Length == 2)
-                    {
-                        cmd.Parameters.AddWithValue("p0", $"%{search_parts[0]}%");
-                        cmd.Parameters.AddWithValue("p1", $"%{search_parts[1]}%");
-                    }
-                    if (Search.Search_text != tb_search_standart_text && !string.IsNullOrWhiteSpace(Search.Search_text) && search_parts.Length == 3)
-                    {
-                        cmd.Parameters.AddWithValue("p0", $"%{search_parts[0]}%");
-                        cmd.Parameters.AddWithValue("p1", $"%{search_parts[1]}%");
-                        cmd.Parameters.AddWithValue("p2", $"%{search_parts[2]}%");
-                    }
+
+                    if (dateFrom.HasValue)
+                        cmd.Parameters.AddWithValue("dateFrom", dateFrom.Value);
+
+                    if (dateTo.HasValue)
+                        cmd.Parameters.AddWithValue("dateTo", dateTo.Value);
+
+                    await con.OpenAsync();
+
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
                         {
-                            var engineJson = reader["engine"]?.ToString();
-
-                            string engineText = null;
-                            if (!string.IsNullOrEmpty(engineJson))
-                            {
-                                var doc = JsonDocument.Parse(engineJson);
-                                engineText = string.Join(", ",
-                                    doc.RootElement.EnumerateObject()
-                                       .Select(p => $"{p.Name}: {p.Value.GetString()}"));
-                            }
                             List_cars.Add(new CarsView
                             {
-                                Марка = reader["mark"].ToString(),
-                                Модель = reader["model"].ToString(),
-                                Цвет = reader["color"].ToString(),
-                                Государственный_номер = reader["number"].ToString(),
+                                Номер_регистрации = reader["registration_id"].ToString(),
+                                ID_автомобиля = reader["car_id"].ToString(),
+                                Марка = reader["car_mark"].ToString(),
+                                Модель = reader["car_model"].ToString(),
+                                Цвет = reader["car_color"].ToString(),
+                                ID_госномера = reader["state_number_id"].ToString(),
+                                Государственный_номер = reader["state_number"].ToString(),
+                                Регион = reader["state_region"].ToString(),
+                                Двигатель = FormatEngine(reader["engine"]),
                                 Год_выпуска = reader["release"].ToString(),
                                 VIN = reader["vin"].ToString(),
-                                Двигатель = engineText,
-                                Имя = reader["first_name"].ToString(),
-                                Фамилия = reader["last_name"].ToString(),
-                                Отчество = reader["middle_name"].ToString(),
-                                Страховая_компания = reader["name"].ToString()
+                                Страховая_компания = reader["insurance_name"].ToString(),
+                                Фамилия_владельца = reader["owner_last_name"].ToString(),
+                                Имя_владельца = reader["owner_first_name"].ToString(),
+                                Отчество_владельца = reader["owner_middle_name"].ToString(),
+                                Дата_регистрации = reader["date_reg"] == DBNull.Value ? "" : Convert.ToDateTime(reader["date_reg"]).ToString("dd.MM.yyyy"),
+                                Дата_окончания = reader["date_end"] == DBNull.Value ? "" : Convert.ToDateTime(reader["date_end"]).ToString("dd.MM.yyyy"),
+                                Token_сотрудника = reader["employee_token"].ToString(),
+                                Фамилия_сотрудника = reader["employee_last_name"].ToString(),
+                                Имя_сотрудника = reader["employee_first_name"].ToString(),
+                                Отчество_сотрудника = reader["employee_middle_name"].ToString()
                             });
                         }
                     }
                 }
-                data_grid_cars.Columns[0].Width = new DataGridLength(0.8, DataGridLengthUnitType.Star);
-                data_grid_cars.Columns[0].Header = new TextBlock { Text = "Марка", FontWeight = FontWeights.Bold };
 
-                data_grid_cars.Columns[1].Width = new DataGridLength(0.8, DataGridLengthUnitType.Star);
-                data_grid_cars.Columns[1].Header = new TextBlock { Text = "Модель", FontWeight = FontWeights.Bold };
+                if (requestId != loadDataRequest)
+                    return;
 
-                data_grid_cars.Columns[2].Width = new DataGridLength(0.8, DataGridLengthUnitType.Star);
-                data_grid_cars.Columns[2].Header = new TextBlock { Text = "Цвет", FontWeight = FontWeights.Bold };
-
-                data_grid_cars.Columns[3].Width = new DataGridLength(1.2, DataGridLengthUnitType.Star);
-                data_grid_cars.Columns[3].Header = new TextBlock { Text = "Государственный номер", FontWeight = FontWeights.Bold };
-
-                data_grid_cars.Columns[4].Width = new DataGridLength(0.7, DataGridLengthUnitType.Star);
-                data_grid_cars.Columns[4].Header = new TextBlock { Text = "Год выпуска", FontWeight = FontWeights.Bold };
-
-                data_grid_cars.Columns[5].Width = new DataGridLength(1.2, DataGridLengthUnitType.Star);
-                data_grid_cars.Columns[5].Header = new TextBlock { Text = "VIN", FontWeight = FontWeights.Bold };
-
-                data_grid_cars.Columns[6].Width = new DataGridLength(2, DataGridLengthUnitType.Star);
-                data_grid_cars.Columns[6].Header = new TextBlock { Text = "Двигатель", FontWeight = FontWeights.Bold };
-
-                data_grid_cars.Columns[7].Width = new DataGridLength(1, DataGridLengthUnitType.Star);
-                data_grid_cars.Columns[7].Header = new TextBlock { Text = "Фамилия", FontWeight = FontWeights.Bold };
-
-                data_grid_cars.Columns[8].Width = new DataGridLength(1, DataGridLengthUnitType.Star);
-                data_grid_cars.Columns[8].Header = new TextBlock { Text = "Имя", FontWeight = FontWeights.Bold };
-
-                data_grid_cars.Columns[9].Width = new DataGridLength(1, DataGridLengthUnitType.Star);
-                data_grid_cars.Columns[9].Header = new TextBlock { Text = "Отчество", FontWeight = FontWeights.Bold };
-
-                data_grid_cars.Columns[10].Width = new DataGridLength(1, DataGridLengthUnitType.Star);
-                data_grid_cars.Columns[10].Header = new TextBlock { Text = "ОСАГО", FontWeight = FontWeights.Bold };
                 data_grid_cars.ItemsSource = List_cars;
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Ошибка загрузки данных: " + ex.Message);
             }
-            finally
+        }
+
+        private void DatePeriod_SelectedDateChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!isClearingPeriod)
+                LoadData();
+        }
+
+        private void Button_Click_clear_period(object sender, RoutedEventArgs e)
+        {
+            isClearingPeriod = true;
+            dp_date_from.SelectedDate = null;
+            dp_date_to.SelectedDate = null;
+            isClearingPeriod = false;
+            LoadData();
+        }
+        private string FormatEngine(object engineValue)
+        {
+            string engineJson = engineValue?.ToString();
+            if (string.IsNullOrWhiteSpace(engineJson))
+                return "";
+            try
             {
-                await con.CloseAsync();
+                using (var doc = JsonDocument.Parse(engineJson))
+                {
+                    return string.Join(", ", doc.RootElement.EnumerateObject().Select(p => $"{p.Name}: {p.Value}"));
+                }
+            }
+            catch
+            {
+                return engineJson;
             }
         }
         private void tb_search_got_focus(object sender, EventArgs e)

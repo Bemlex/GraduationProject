@@ -12,23 +12,47 @@
         <Grid.Background>
             <ImageBrush ImageSource="/Images/Background.jpg"/>
         </Grid.Background>
-        <TextBox Name="tb_search" HorizontalAlignment="Center" Margin="0,29,0,0" TextWrapping="Wrap" FontSize="17" VerticalContentAlignment="Center"
-        Text="🔍 Поиск" TextChanged="tb_search_text_changed" HorizontalContentAlignment="Center" Width="552" Height="33" VerticalAlignment="Top"
-        GotFocus="tb_search_got_focus" LostFocus="tb_search_lost_focus" Foreground="Gray"/>
-        <DataGrid Name="data_grid_cars" ItemsSource="{Binding}" AutoGenerateColumns="False" FontSize="15" CanUserAddRows="False"
-IsReadOnly="True" Margin="89,89,89,130">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,29,0,0">
+            <TextBox Name="tb_search" TextWrapping="Wrap" FontSize="17" VerticalContentAlignment="Center" Text="🔍 Поиск" TextChanged="tb_search_text_changed" HorizontalContentAlignment="Center" Width="552" Height="33" GotFocus="tb_search_got_focus" LostFocus="tb_search_lost_focus" Foreground="Gray"/>
+            <TextBlock Text="с" FontSize="17" VerticalAlignment="Center" Margin="18,0,8,0"/>
+            <DatePicker Name="dp_date_from" Width="140" Height="33" FontSize="16" SelectedDateChanged="DatePeriod_SelectedDateChanged"/>
+            <TextBlock Text="по" FontSize="17" VerticalAlignment="Center" Margin="12,0,8,0"/>
+            <DatePicker Name="dp_date_to" Width="140" Height="33" FontSize="16" SelectedDateChanged="DatePeriod_SelectedDateChanged"/>
+            <Button Content="Очистить" FontSize="15" Width="100" Height="33" Margin="12,0,0,0" Click="Button_Click_clear_period"/>
+        </StackPanel>
+        <DataGrid Name="data_grid_cars"
+          RowHeight="40"
+          ItemsSource="{Binding}"
+          AutoGenerateColumns="False"
+          FontSize="15"
+          CanUserAddRows="False"
+          IsReadOnly="True"
+          Margin="89,89,89,130"
+          ScrollViewer.HorizontalScrollBarVisibility="Auto"
+          ScrollViewer.VerticalScrollBarVisibility="Auto"
+          ColumnWidth="Auto">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Марка" Binding="{Binding Марка}" />
-                <DataGridTextColumn Header="Модель" Binding="{Binding Модель}" />
-                <DataGridTextColumn Header="Цвет" Binding="{Binding Цвет}" />
-                <DataGridTextColumn Header="Государственный номер" Binding="{Binding Государственный_номер}" />
-                <DataGridTextColumn Header="Год выпуска" Binding="{Binding Год_выпуска}" />
-                <DataGridTextColumn Header="VIN" Binding="{Binding VIN}" />
-                <DataGridTextColumn Header="Двигатель" Binding="{Binding Двигатель}" />
-                <DataGridTextColumn Header="Фамилия" Binding="{Binding Фамилия}" />
-                <DataGridTextColumn Header="Имя" Binding="{Binding Имя}" />
-                <DataGridTextColumn Header="Отчество" Binding="{Binding Отчество}" />
-                <DataGridTextColumn Header="Страховая компания" Binding="{Binding Страховая_компания}" />
+                <DataGridTextColumn Header="№ регистрации" Binding="{Binding Номер_регистрации}"/>
+                <DataGridTextColumn Header="id автомобиля" Binding="{Binding ID_автомобиля}" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Марка" Binding="{Binding Марка}"/>
+                <DataGridTextColumn Header="Модель" Binding="{Binding Модель}"/>
+                <DataGridTextColumn Header="Цвет" Binding="{Binding Цвет}"/>
+                <DataGridTextColumn Header="id госномера" Binding="{Binding ID_госномера}" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Гос. номер" Binding="{Binding Государственный_номер}"/>
+                <DataGridTextColumn Header="Регион" Binding="{Binding Регион}"/>
+                <DataGridTextColumn Header="Двигатель" Binding="{Binding Двигатель}"/>
+                <DataGridTextColumn Header="Год выпуска" Binding="{Binding Год_выпуска}"/>
+                <DataGridTextColumn Header="VIN" Binding="{Binding VIN}"/>
+                <DataGridTextColumn Header="ОСАГО" Binding="{Binding Страховая_компания}"/>
+                <DataGridTextColumn Header="Фамилия владельца" Binding="{Binding Фамилия_владельца}"/>
+                <DataGridTextColumn Header="Имя владельца" Binding="{Binding Имя_владельца}"/>
+                <DataGridTextColumn Header="Отчество владельца" Binding="{Binding Отчество_владельца}"/>
+                <DataGridTextColumn Header="Дата регистрации" Binding="{Binding Дата_регистрации}"/>
+                <DataGridTextColumn Header="Дата окончания" Binding="{Binding Дата_окончания}"/>
+                <DataGridTextColumn Header="token сотрудника" Binding="{Binding Token_сотрудника}" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Фамилия выдавшего" Binding="{Binding Фамилия_сотрудника}"/>
+                <DataGridTextColumn Header="Имя выдавшего" Binding="{Binding Имя_сотрудника}"/>
+                <DataGridTextColumn Header="Отчество выдавшего" Binding="{Binding Отчество_сотрудника}"/>
             </DataGrid.Columns>
         </DataGrid>
         <Button Content="Назад" Click="Button_Click_back" FontSize="24" HorizontalAlignment="Left" Margin="42,0,0,31" VerticalAlignment="Bottom" Height="66" Width="171"/>

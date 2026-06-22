@@ -9,5 +9,6 @@ namespace GraduationProject
     internal class Session
     {
         public static string Login { get; set; }
+        public static string FullName { get; set; }
     }
 }

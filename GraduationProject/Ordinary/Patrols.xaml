@@ -11,6 +11,7 @@
         WindowState="Maximized" ResizeMode="CanMinimize">
     <Grid>
         <DataGrid FontSize="16"
+          CanUserAddRows="False"
           Name="data_grid_patrols"
           AutoGenerateColumns="True"
           ColumnWidth="Auto"
@@ -40,19 +41,6 @@
             </DataGrid.RowStyle>
         </DataGrid>
         <Button Content="Назад" Click="Button_Click_back" FontSize="24" HorizontalAlignment="Left" Margin="42,0,0,31" VerticalAlignment="Bottom" Height="66" Width="171"/>
-        <Button Content="Добавить" Click="Button_Click_add" FontSize="24" HorizontalAlignment="Right" Margin="0,0,160,31" VerticalAlignment="Bottom" Height="66" Width="171"/>
-        <Button Content="Сохранить" Name="Button_save" Click="Button_Click_save" IsEnabled="False" FontSize="24" HorizontalAlignment="Right" Margin="0,0,389,31" VerticalAlignment="Bottom" Height="66" Width="172"/>
-        <Button Content="Редактировать" Name="Button_edit" Click="Button_Click_edit" IsEnabled="False" FontSize="24" HorizontalAlignment="Right" Margin="0,0,623,31" VerticalAlignment="Bottom" Height="66" Width="172"/>
-        <Button Content="Удалить"
-        Name="Button_delete"
-        Click="Button_Click_delete"
-        IsEnabled="False"
-        FontSize="24"
-        HorizontalAlignment="Right"
-        Margin="0,0,857,31"
-        VerticalAlignment="Bottom"
-        Height="66"
-        Width="172"/>
         <TextBlock Text="Поиск:"
            FontSize="24"
            HorizontalAlignment="Left"
@@ -68,5 +56,20 @@
          Height="40"
          Width="480"
          VerticalContentAlignment="Center"/>
+        <ComboBox Name="ComboBox_export"
+                  SelectionChanged="ComboBox_export_SelectionChanged"
+                  FontSize="24"
+                  HorizontalAlignment="Right"
+                  Margin="0,0,160,31"
+                  VerticalAlignment="Bottom"
+                  Height="66"
+                  Width="171"
+                  SelectedIndex="0"
+                  VerticalContentAlignment="Center"
+                  HorizontalContentAlignment="Center">
+            <ComboBoxItem Content="Вывод" IsEnabled="False"/>
+            <ComboBoxItem Content="Excel"/>
+            <ComboBoxItem Content="PDF"/>
+        </ComboBox>
     </Grid>
 </Window>

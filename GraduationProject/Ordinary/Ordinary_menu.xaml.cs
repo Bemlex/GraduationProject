@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -22,10 +23,18 @@ namespace GraduationProject.Ordinary
         public Ordinary_menu()
         {
             InitializeComponent();
-            tb_info.Text = "Рядовой служащий: " + Session.Login;
+            tb_info.Text = "Рядовой служащий: " + Session.FullName;
         }
         private void Button_Click_back(object sender, RoutedEventArgs e)
         {
+            string appDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            string filePath = System.IO.Path.Combine(appDirectory, "token.txt");
+
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+
             MainWindow main_window = new MainWindow();
             main_window.Show();
             this.Close();

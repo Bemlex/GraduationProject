@@ -16,13 +16,12 @@
         <Button Content="Марки и модели" FontSize="24" HorizontalAlignment="Right" Margin="0,127,10,0" VerticalAlignment="Top" Height="83" Width="203" Click="Button_Click_mark_models"/>
         <Button Content="Закончить сессию" FontSize="24" HorizontalAlignment="Right" Margin="0,0,42,36" VerticalAlignment="Bottom" Height="83" Width="203" Click="Button_Click_back"/>
         <Button Content="Реестр граждан" FontSize="24" HorizontalAlignment="Left" Margin="10,127,0,0" VerticalAlignment="Top" Height="83" Width="203" Click="Button_Click_people"/>
-        <Button Content="Реестр номеров" FontSize="24" HorizontalAlignment="Left" Margin="10,210,0,0" VerticalAlignment="Top" Height="83" Width="203" Click="Button_Click_state_numbers"/>
-        <Button Content="Реестр ВУ" FontSize="24" HorizontalAlignment="Left" Margin="10,293,0,0" VerticalAlignment="Top" Height="83" Width="203" Click="Button_Click_driver_certificates"/>
-        <Button Content="Реестр машин" FontSize="24" HorizontalAlignment="Left" Margin="10,376,0,0" VerticalAlignment="Top" Height="83" Width="203" Click="Button_Click_cars"/>
+        <Button Content="Реестр ВУ" FontSize="24" HorizontalAlignment="Left" Margin="10,202,0,0" VerticalAlignment="Top" Height="83" Width="203" Click="Button_Click_driver_certificates"/>
+        <Button Content="Реестр машин" FontSize="24" HorizontalAlignment="Left" Margin="10,285,0,0" VerticalAlignment="Top" Height="83" Width="203" Click="Button_Click_cars"/>
         <Button Content="Законы" FontSize="24" HorizontalAlignment="Right" Margin="0,210,10,0" VerticalAlignment="Top" Height="83" Width="203" Click="Button_Click_laws"/>
         <Button Content="Процес. действия" FontSize="24" HorizontalAlignment="Right" Margin="0,293,10,0" VerticalAlignment="Top" Height="83" Width="203" Click="Button_Click_procedural_actions"/>
         <Button Content="Запрет эксплуат." FontSize="24" HorizontalAlignment="Right" Margin="0,376,10,0" VerticalAlignment="Top" Height="83" Width="203" Click="Button_Click_vehicle_defects"/>
-        <Button Content="Протоколы" FontSize="24" HorizontalAlignment="Left" Margin="10,459,0,0" VerticalAlignment="Top" Height="83" Width="203" Click="Button_Click_protocols"/>
-        <Button Content="Патрулирования" FontSize="24" HorizontalAlignment="Left" Margin="10,542,0,0" VerticalAlignment="Top" Height="83" Width="203" Click="Button_Click_patrols"/>
+        <Button Content="Протоколы" FontSize="24" HorizontalAlignment="Left" Margin="10,368,0,0" VerticalAlignment="Top" Height="83" Width="203" Click="Button_Click_protocols"/>
+        <Button Content="Патрулирования" FontSize="24" HorizontalAlignment="Left" Margin="10,451,0,0" VerticalAlignment="Top" Height="83" Width="203" Click="Button_Click_patrols"/>
     </Grid>
 </Window>

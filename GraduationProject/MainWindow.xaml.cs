@@ -56,7 +56,26 @@ namespace GraduationProject
         {
             await tokens.CheckSession();
         }
+        private async Task<string> GetUserFullName(int user_id)
+        {
+            string sql = @"SELECT concat_ws(' ', p.last_name, p.first_name, p.middle_name) AS full_name
+FROM Users u
+LEFT JOIN Employees e ON u.employee_token = e.token
+LEFT JOIN People p ON e.people_id = p.id
+WHERE u.id = @user_id";
 
+            using (var fullNameCmd = new NpgsqlCommand(sql, con))
+            {
+                fullNameCmd.Parameters.AddWithValue("user_id", user_id);
+                object result = await fullNameCmd.ExecuteScalarAsync();
+                string fullName = result?.ToString();
+
+                if (string.IsNullOrWhiteSpace(fullName))
+                    return Session.Login;
+
+                return fullName;
+            }
+        }
         public async void Button_Click(object sender, RoutedEventArgs e)
         {
             string login = tb_login.Text;
@@ -75,25 +94,33 @@ namespace GraduationProject
                     cmd.Parameters.AddWithValue("login", login);
                     cmd.Parameters.AddWithValue("password", password);
                     cmd.CommandText = "SELECT * FROM Function_authorization(@login, @password);";
+                    bool IsAuthenticated = false;
+                    int role_id = 0;
+                    int user_id = 0;
+
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         if (await reader.ReadAsync())
                         {
-                            bool IsAuthenticated = reader.GetBoolean(0);
-                            int role_id = reader.GetInt32(1);
-                            int user_id = reader.GetInt32(2);
-                            if (IsAuthenticated)
-                            {
-                                Tokens tokens = new Tokens();
-                                Session.Login = login;
-                                tokens.CreateFile(user_id);
-                                Entry_roles(role_id);
-                            }
-                            else
-                            {
-                                MessageBox.Show("Неверные данные");
-                            }
+                            IsAuthenticated = reader.GetBoolean(0);
+                            role_id = reader.GetInt32(1);
+                            user_id = reader.GetInt32(2);
                         }
+                    }
+
+                    if (IsAuthenticated)
+                    {
+                        Tokens tokens = new Tokens();
+
+                        Session.Login = login;
+                        Session.FullName = await GetUserFullName(user_id);
+
+                        tokens.CreateFile(user_id);
+                        Entry_roles(role_id);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Неверные данные");
                     }
                 }
                 catch (Npgsql.PostgresException ex)

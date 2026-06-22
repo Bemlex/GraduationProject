@@ -23,6 +23,7 @@ namespace GraduationProject.Ordinary
     {
         Npgsql.NpgsqlConnection con = new NpgsqlConnection("Server = localhost; Port = 5432; Username = postgres; Password = 1234; Database = GIBDD");
         Npgsql.NpgsqlCommand cmd = new NpgsqlCommand();
+        private List<State_numbersView> list_state_numbers = new List<State_numbersView>();
         public State_numbers()
         {
             InitializeComponent();
@@ -38,30 +39,50 @@ namespace GraduationProject.Ordinary
         }
         private async void LoadData()
         {
-            List<State_numbersView> List_state_numbers = new List<State_numbersView>();
             try
             {
                 await con.OpenAsync();
-                string sql = @"SELECT s.number, s.region, s.date_reg, p.last_name, p.first_name, p.middle_name
-                            FROM State_numbers s JOIN Employees e ON s.employee_token = e.token 
-                            JOIN People p ON e.people_id = p.id;";
+                string sql = @"
+                SELECT 
+                    s.number,
+                    s.region,
+
+                    pe.last_name AS owner_last_name,
+                    pe.first_name AS owner_first_name,
+                    pe.middle_name AS owner_middle_name,
+
+                    s.date_reg,
+
+                    p.last_name AS employee_last_name,
+                    p.first_name AS employee_first_name,
+                    p.middle_name AS employee_middle_name
+                FROM State_numbers s 
+                LEFT JOIN Employees e ON s.employee_token = e.token
+                LEFT JOIN People p ON e.people_id = p.id
+                LEFT JOIN Cars c ON c.state_number_id = s.id
+                LEFT JOIN People pe ON c.owner_id = pe.id;";
                 using (var cmd = new NpgsqlCommand(sql, con))
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     while (await reader.ReadAsync())
                     {
-                        List_state_numbers.Add(new State_numbersView
+                        list_state_numbers.Add(new State_numbersView
                         {
                             Государственный_номер = reader["number"].ToString(),
                             Регион = reader["region"].ToString(),
+
+                            Фамилия_владельца = reader["owner_last_name"].ToString(),
+                            Имя_владельца = reader["owner_first_name"].ToString(),
+                            Отчество_владельца = reader["owner_middle_name"].ToString(),
+
                             Дата_регистрации = DateTime.Parse(reader["date_reg"].ToString()).ToString("dd.MM.yyyy"),
-                            Фамилия = reader["last_name"].ToString(),
-                            Имя = reader["first_name"].ToString(),
-                            Отчество = reader["middle_name"].ToString()
+
+                            Фамилия = reader["employee_last_name"].ToString(),
+                            Имя = reader["employee_first_name"].ToString(),
+                            Отчество = reader["employee_middle_name"].ToString()
                         });
                     }
                 }
-
                 data_grid_employees.Columns[0].Width = new DataGridLength(1, DataGridLengthUnitType.Star);
                 data_grid_employees.Columns[0].Header = new TextBlock { Text = "Государственный номер", FontWeight = FontWeights.Bold };
 
@@ -69,17 +90,26 @@ namespace GraduationProject.Ordinary
                 data_grid_employees.Columns[1].Header = new TextBlock { Text = "Регион", FontWeight = FontWeights.Bold };
 
                 data_grid_employees.Columns[2].Width = new DataGridLength(1, DataGridLengthUnitType.Star);
-                data_grid_employees.Columns[2].Header = new TextBlock { Text = "Дата регистрации", FontWeight = FontWeights.Bold };
+                data_grid_employees.Columns[2].Header = new TextBlock { Text = "Фамилия владельца", FontWeight = FontWeights.Bold };
 
                 data_grid_employees.Columns[3].Width = new DataGridLength(1, DataGridLengthUnitType.Star);
-                data_grid_employees.Columns[3].Header = new TextBlock { Text = "Фамилия выдавшего", FontWeight = FontWeights.Bold };
+                data_grid_employees.Columns[3].Header = new TextBlock { Text = "Имя владельца", FontWeight = FontWeights.Bold };
 
                 data_grid_employees.Columns[4].Width = new DataGridLength(1, DataGridLengthUnitType.Star);
-                data_grid_employees.Columns[4].Header = new TextBlock { Text = "Имя выдавшего", FontWeight = FontWeights.Bold };
+                data_grid_employees.Columns[4].Header = new TextBlock { Text = "Отчество владельца", FontWeight = FontWeights.Bold };
 
                 data_grid_employees.Columns[5].Width = new DataGridLength(1, DataGridLengthUnitType.Star);
-                data_grid_employees.Columns[5].Header = new TextBlock { Text = "Отчество выдавшего", FontWeight = FontWeights.Bold };
-                data_grid_employees.ItemsSource = List_state_numbers;
+                data_grid_employees.Columns[5].Header = new TextBlock { Text = "Дата регистрации", FontWeight = FontWeights.Bold };
+
+                data_grid_employees.Columns[6].Width = new DataGridLength(1, DataGridLengthUnitType.Star);
+                data_grid_employees.Columns[6].Header = new TextBlock { Text = "Фамилия выдавшего", FontWeight = FontWeights.Bold };
+
+                data_grid_employees.Columns[7].Width = new DataGridLength(1, DataGridLengthUnitType.Star);
+                data_grid_employees.Columns[7].Header = new TextBlock { Text = "Имя выдавшего", FontWeight = FontWeights.Bold };
+
+                data_grid_employees.Columns[8].Width = new DataGridLength(1, DataGridLengthUnitType.Star);
+                data_grid_employees.Columns[8].Header = new TextBlock { Text = "Отчество выдавшего", FontWeight = FontWeights.Bold };
+                data_grid_employees.ItemsSource = list_state_numbers;
             }
             catch (Exception ex)
             {
@@ -107,6 +137,31 @@ namespace GraduationProject.Ordinary
             Ordinary_menu ordinary_menu = new Ordinary_menu();
             ordinary_menu.Show();
             this.Close();
+        }
+        private void TextBox_search_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (list_state_numbers == null)
+                return;
+
+            string searchText = TextBox_search.Text.Trim().ToLower();
+
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                data_grid_employees.ItemsSource = list_state_numbers;
+                return;
+            }
+
+            data_grid_employees.ItemsSource = list_state_numbers.Where(item =>
+                (item.Государственный_номер ?? "").ToLower().Contains(searchText) ||
+                (item.Регион ?? "").ToLower().Contains(searchText) ||
+                (item.Фамилия_владельца ?? "").ToLower().Contains(searchText) ||
+                (item.Имя_владельца ?? "").ToLower().Contains(searchText) ||
+                (item.Отчество_владельца ?? "").ToLower().Contains(searchText) ||
+                (item.Дата_регистрации ?? "").ToLower().Contains(searchText) ||
+                (item.Фамилия ?? "").ToLower().Contains(searchText) ||
+                (item.Имя ?? "").ToLower().Contains(searchText) ||
+                (item.Отчество ?? "").ToLower().Contains(searchText)
+            ).ToList();
         }
     }
 }

@@ -91,6 +91,9 @@
         <DataGridTextColumn Header="Гос. номер"
                             Binding="{Binding [state_number]}"
                             Width="0.8*"/>
+                <DataGridTextColumn Header="Регион"
+                    Binding="{Binding [state_region]}"
+                    Width="0.5*"/>
 
         <DataGridTextColumn Header="Роль участника"
                             Binding="{Binding [member_role]}"

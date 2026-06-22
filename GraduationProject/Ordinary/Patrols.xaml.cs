@@ -13,6 +13,11 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using ClosedXML.Excel;
+using iTextSharp.text;
+using iTextSharp.text.pdf;
+using Microsoft.Win32;
+using System.IO;
 
 namespace GraduationProject.Ordinary
 {
@@ -24,6 +29,12 @@ namespace GraduationProject.Ordinary
         NpgsqlConnection con = new Npgsql.NpgsqlConnection("Server = localhost; Port = 5432; Username = postgres; Password = 1234; Database = GIBDD");
         NpgsqlCommand cmd = new NpgsqlCommand();
         private DataTable data_table_patrols;
+        private class ExportColumn
+        {
+            public string Header { get; set; }
+            public string ColumnName { get; set; }
+            public double Width { get; set; }
+        }
         public Patrols()
         {
             InitializeComponent();
@@ -42,33 +53,28 @@ namespace GraduationProject.Ordinary
             to_char(p.start_time, 'HH24:MI DD.MM.YYYY') AS start_time,
             to_char(p.end_time, 'HH24:MI DD.MM.YYYY') AS end_time,
             p.area AS area,
-
             pm.employee_token AS employee_token,
             e.rank AS employee_rank,
-
             pe.last_name AS employee_last_name,
             pe.first_name AS employee_first_name,
             pe.middle_name AS employee_middle_name,
-
             d.name AS division_name,
-
             pm.state_number_id AS state_number_id,
             s.number AS state_number,
-
             m.mark AS car_mark,
             mm.model AS car_model,
             c.color AS car_color
-
             FROM Patrols p
             LEFT JOIN Patrol_members pm ON p.id = pm.patrol_id
             LEFT JOIN Employees e ON pm.employee_token = e.token
             LEFT JOIN State_numbers s ON pm.state_number_id = s.id
             LEFT JOIN Divisions d ON e.division_id = d.id
             LEFT JOIN People pe ON e.people_id = pe.id
-            LEFT JOIN Cars c ON s.id = c.state_number_id
+            LEFT JOIN Vehicle_registrations vr ON vr.state_number_id = s.id
+            LEFT JOIN Cars c ON vr.car_id = c.id
             LEFT JOIN Mark_models mm ON c.mark_model_id = mm.id
             LEFT JOIN Marks m ON mm.mark_id = m.id
-            ORDER BY p.start_time DESC;";
+                        ORDER BY p.start_time DESC;";
 
                 using (var cmd = new NpgsqlCommand(sql, con))
                 using (var reader = await cmd.ExecuteReaderAsync())
@@ -90,7 +96,7 @@ namespace GraduationProject.Ordinary
                 // Скрытые служебные столбцы
                 data_grid_patrols.Columns[5].Visibility = Visibility.Collapsed;  // employee_token
                 data_grid_patrols.Columns[11].Visibility = Visibility.Collapsed; // state_number_id
-                data_grid_patrols.Columns[0].Width = new DataGridLength(50, DataGridLengthUnitType.Pixel);
+                data_grid_patrols.Columns[0].Width = new DataGridLength(150, DataGridLengthUnitType.Pixel);
                 data_grid_patrols.Columns[0].Header = new TextBlock { Text = "№ патрулирования", FontWeight = FontWeights.Bold };
                 data_grid_patrols.Columns[1].Width = new DataGridLength(180, DataGridLengthUnitType.Pixel);
                 data_grid_patrols.Columns[1].Header = new TextBlock { Text = "Тип патрулирования", FontWeight = FontWeights.Bold };
@@ -104,7 +110,7 @@ namespace GraduationProject.Ordinary
                 data_grid_patrols.Columns[4].Width = new DataGridLength(300, DataGridLengthUnitType.Pixel);
                 data_grid_patrols.Columns[4].Header = new TextBlock { Text = "Адрес / область", FontWeight = FontWeights.Bold };
 
-                data_grid_patrols.Columns[6].Width = new DataGridLength(120, DataGridLengthUnitType.Pixel);
+                data_grid_patrols.Columns[6].Width = new DataGridLength(150, DataGridLengthUnitType.Pixel);
                 data_grid_patrols.Columns[6].Header = new TextBlock { Text = "Звание", FontWeight = FontWeights.Bold };
 
                 data_grid_patrols.Columns[7].Width = new DataGridLength(170, DataGridLengthUnitType.Pixel);
@@ -155,6 +161,219 @@ namespace GraduationProject.Ordinary
         private async void Button_Click_save(object sender, RoutedEventArgs e)
         {
         }
+        private void Button_Click_export_excel(object sender, RoutedEventArgs e)
+        {
+            var rows = GetDisplayedPatrolRows();
+
+            if (rows.Count == 0)
+            {
+                MessageBox.Show("Нет данных для экспорта.");
+                return;
+            }
+
+            SaveFileDialog saveDialog = new SaveFileDialog();
+            saveDialog.Filter = "Excel файл (*.xlsx)|*.xlsx";
+            saveDialog.FileName = "Патрулирования.xlsx";
+
+            if (saveDialog.ShowDialog() != true)
+                return;
+
+            ExportPatrolsToExcel(saveDialog.FileName, rows);
+
+            MessageBox.Show("Excel-файл успешно создан.");
+        }
+
+        private void ComboBox_export_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ComboBox_export == null || ComboBox_export.SelectedIndex == 0)
+                return;
+
+            if (ComboBox_export.SelectedIndex == 1)
+            {
+                Button_Click_export_excel(sender, e);
+            }
+            else if (ComboBox_export.SelectedIndex == 2)
+            {
+                Button_Click_export_pdf(sender, e);
+            }
+
+            ComboBox_export.SelectedIndex = 0;
+        }
+
+        private void ExportPatrolsToExcel(string filePath, List<DataRowView> rows)
+        {
+            var columns = GetVisiblePatrolColumns();
+
+            using (var workbook = new XLWorkbook())
+            {
+                var worksheet = workbook.Worksheets.Add("Патрулирования");
+
+                for (int colIndex = 0; colIndex < columns.Count; colIndex++)
+                {
+                    var cell = worksheet.Cell(1, colIndex + 1);
+                    cell.Value = columns[colIndex].Header;
+                    cell.Style.Font.Bold = true;
+                    cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                }
+
+                int rowIndex = 2;
+
+                foreach (DataRowView row in rows)
+                {
+                    for (int colIndex = 0; colIndex < columns.Count; colIndex++)
+                    {
+                        worksheet.Cell(rowIndex, colIndex + 1).Value =
+                            row[columns[colIndex].ColumnName]?.ToString();
+                    }
+
+                    rowIndex++;
+                }
+
+                worksheet.Columns().AdjustToContents();
+                worksheet.SheetView.FreezeRows(1);
+
+                workbook.SaveAs(filePath);
+            }
+        }
+
+        private void Button_Click_export_pdf(object sender, RoutedEventArgs e)
+        {
+            var rows = GetDisplayedPatrolRows();
+
+            if (rows.Count == 0)
+            {
+                MessageBox.Show("Нет данных для экспорта.");
+                return;
+            }
+
+            SaveFileDialog saveDialog = new SaveFileDialog();
+            saveDialog.Filter = "PDF файл (*.pdf)|*.pdf";
+            saveDialog.FileName = "Патрулирования.pdf";
+
+            if (saveDialog.ShowDialog() != true)
+                return;
+
+            ExportPatrolsToPdf(saveDialog.FileName, rows);
+
+            MessageBox.Show("PDF-файл успешно создан.");
+        }
+
+        private void ExportPatrolsToPdf(string filePath, List<DataRowView> rows)
+        {
+            var columns = GetVisiblePatrolColumns();
+
+            Document document = new Document(PageSize.A4.Rotate(), 15, 15, 15, 15);
+
+            PdfWriter.GetInstance(document, new FileStream(filePath, FileMode.Create));
+
+            document.Open();
+
+            string fontPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Fonts),
+                "arial.ttf");
+
+            BaseFont baseFont = BaseFont.CreateFont(
+                fontPath,
+                BaseFont.IDENTITY_H,
+                BaseFont.EMBEDDED);
+
+            Font titleFont = new Font(baseFont, 16, Font.BOLD);
+            Font headerFont = new Font(baseFont, 8, Font.BOLD);
+            Font cellFont = new Font(baseFont, 7, Font.NORMAL);
+
+            iTextSharp.text.Paragraph title = new iTextSharp.text.Paragraph("Список патрулирований", titleFont);
+            title.Alignment = Element.ALIGN_CENTER;
+            title.SpacingAfter = 15;
+            document.Add(title);
+
+            PdfPTable table = new PdfPTable(columns.Count);
+            table.WidthPercentage = 100;
+            table.SetWidths(columns.Select(column => (float)Math.Max(column.Width, 50)).ToArray());
+
+            foreach (ExportColumn column in columns)
+            {
+                PdfPCell cell = CreatePdfCell(column.Header, headerFont, Element.ALIGN_CENTER);
+                table.AddCell(cell);
+            }
+
+            foreach (DataRowView row in rows)
+            {
+                foreach (ExportColumn column in columns)
+                {
+                    string value = row[column.ColumnName]?.ToString() ?? "";
+                    table.AddCell(CreatePdfCell(value, cellFont, Element.ALIGN_LEFT));
+                }
+            }
+
+            document.Add(table);
+
+            document.Close();
+        }
+
+        private PdfPCell CreatePdfCell(string text, Font font, int horizontalAlignment)
+        {
+            PdfPCell cell = new PdfPCell(new Phrase(text ?? "", font));
+            cell.HorizontalAlignment = horizontalAlignment;
+            cell.VerticalAlignment = Element.ALIGN_MIDDLE;
+            cell.Padding = 3;
+            return cell;
+        }
+
+        private List<DataRowView> GetDisplayedPatrolRows()
+        {
+            return data_grid_patrols.Items
+                .OfType<DataRowView>()
+                .ToList();
+        }
+
+        private List<ExportColumn> GetVisiblePatrolColumns()
+        {
+            return data_grid_patrols.Columns
+                .Where(column => column.Visibility == Visibility.Visible)
+                .OrderBy(column => column.DisplayIndex)
+                .Select(column => new ExportColumn
+                {
+                    Header = GetColumnHeader(column),
+                    ColumnName = GetColumnName(column),
+                    Width = column.ActualWidth
+                })
+                .Where(column => !string.IsNullOrWhiteSpace(column.ColumnName))
+                .ToList();
+        }
+
+        private string GetColumnHeader(DataGridColumn column)
+        {
+            if (column.Header is TextBlock textBlock)
+                return textBlock.Text;
+
+            return column.Header?.ToString() ?? "";
+        }
+
+        private string GetColumnName(DataGridColumn column)
+        {
+            if (!string.IsNullOrWhiteSpace(column.SortMemberPath))
+                return NormalizeColumnName(column.SortMemberPath);
+
+            if (column is DataGridBoundColumn boundColumn &&
+                boundColumn.Binding is Binding binding)
+            {
+                return NormalizeColumnName(binding.Path?.Path);
+            }
+
+            return "";
+        }
+
+        private string NormalizeColumnName(string columnName)
+        {
+            if (string.IsNullOrWhiteSpace(columnName))
+                return "";
+
+            if (columnName.StartsWith("[") && columnName.EndsWith("]"))
+                return columnName.Substring(1, columnName.Length - 2);
+
+            return columnName;
+        }
+
         private void Button_Click_back(object sender, RoutedEventArgs e)
         {
             Ordinary_menu ordinary_menu = new Ordinary_menu();

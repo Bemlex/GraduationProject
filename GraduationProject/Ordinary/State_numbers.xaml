@@ -17,6 +17,9 @@
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Государственный номер" Binding="{Binding Государственный_номер}"/>
                 <DataGridTextColumn Header="Регион" Binding="{Binding Регион}"/>
+                <DataGridTextColumn Header="Фамилия владельца" Binding="{Binding Фамилия_владельца}"/>
+                <DataGridTextColumn Header="Имя владельца" Binding="{Binding Имя_владельца}"/>
+                <DataGridTextColumn Header="Отчество владельца" Binding="{Binding Отчество_владельца}"/>
                 <DataGridTextColumn Header="Дата регистрации" Binding="{Binding Дата_регистрации}"/>
                 <DataGridTextColumn Header="Фамилия выдавшего" Binding="{Binding Фамилия}"/>
                 <DataGridTextColumn Header="Имя выдавшего" Binding="{Binding Имя}"/>
@@ -25,6 +28,43 @@
         </DataGrid>
         <Image x:Name="image_big" Visibility="Hidden"
             Stretch="Uniform" Margin="205,144,205,184" MouseLeftButtonUp="Big_image_click"/>
+        <TextBox Name="TextBox_search"
+         TextChanged="TextBox_search_TextChanged"
+         FontSize="20"
+         HorizontalContentAlignment="Center"
+         HorizontalAlignment="Center"
+         VerticalAlignment="Top"
+         Margin="0,32,0,0"
+         Height="31"
+         Width="461"
+         VerticalContentAlignment="Center"
+         Padding="10,0,10,0">
+            <TextBox.Style>
+                <Style TargetType="TextBox">
+                    <Style.Resources>
+                        <VisualBrush x:Key="SearchHint" Stretch="None" AlignmentX="Center">
+                            <VisualBrush.Visual>
+                                <TextBlock Text="🔍 Поиск"
+                                   Width="480"
+                                   FontSize="20"
+                                   Foreground="#80000000"
+                                   TextAlignment="Center"/>
+                            </VisualBrush.Visual>
+                        </VisualBrush>
+                    </Style.Resources>
+
+                    <Setter Property="Background" Value="White"/>
+                    <Style.Triggers>
+                        <Trigger Property="Text" Value="">
+                            <Setter Property="Background" Value="{StaticResource SearchHint}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter Property="Background" Value="White"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBox.Style>
+        </TextBox>
         <Button Content="Назад" Click="Button_Click_back" FontSize="24" HorizontalAlignment="Left" Margin="42,0,0,31" VerticalAlignment="Bottom" Height="66" Width="171"/>
     </Grid>
 </Window>
